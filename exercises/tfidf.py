@@ -64,22 +64,30 @@ main(text)
 
 # Advanced
 
+import math
+import numpy as np
+
 text = '''Humpty Dumpty sat on a wall
 Humpty Dumpty had a great fall
 all the king's horses and all the king's men
 couldn't put Humpty together again'''
 
 
-# text = '''he really really loves coffee
-# my sister dislikes coffee
-# my sister loves tea'''
+# Two functions used in exercise 17 Bag of words
+def distance(row1, row2):
+    # It seems exercise tests want Euclidian distance
+    return math.sqrt(sum((count1 - count2)**2 for count1, count2 in zip(row1, row2)))
 
-
-def dist(a, b):
-    sum = 0
-    for ai, bi in zip(a, b):
-        sum = sum + abs(ai - bi)
-    return sum
+def find_nearest_pair(data):
+    N = len(data)
+    dist = np.empty((N, N), dtype=np.float)
+    for i, row1 in enumerate(data):
+        for j, row2 in enumerate(data):
+            if i == j:
+                dist[i, j] = np.Inf
+            else:
+                dist[i, j] = distance(row1, row2)
+    return np.unravel_index(np.argmin(dist), dist.shape)
 
 
 def main(text):
@@ -91,37 +99,35 @@ def main(text):
     # docs = [line.lower().split() for line in text.split('\n')]
 
     docs = [line.lower().split() for line in text.split('\n')]
-    words = list(set(word for sentence in docs for word in sentence))
+    unique_words = list(set(word for sentence in docs for word in sentence))
 
     # 2. go over each unique word and calculate its term frequency, and its document frequency
+    
+    # It seems that there tf and tfidf should be computet also for words which are not in the document (line)
+    # https://spectrum.chat/elementsofai/buildingai/exercise-18-tf-idf-advanced-help-needed~a9e1d6ca-fe43-4c91-bbd3-270956c0971b
+    
     tfs = []
+
     for doc in docs:
-        tfs.append({word: doc.count(word)/len(doc) for word in set(doc)})
+        tfs.append([doc.count(unique_word)/len(doc) if unique_word in doc else 0 for unique_word in unique_words])
+    
     dfs = {}
-    for word in words:
+    for word in unique_words:
         dfs[word] = sum(word in doc for doc in docs)/len(docs)
     
     # 3. after you have your term frequencies and document frequencies, go over each line in the text and 
     # calculate its TF-IDF representation, which will be a vector
-
     tfidfs = []
-    for i, doc in enumerate(docs):
-        tfidfs.append([tfs[i][word] * math.log(1/dfs[word], 10) for word in set(doc)])
+
+    for row in tfs:
+        tfidfs.append([tf * math.log(1/dfs[unique_words[i]], 10) for i, tf in enumerate(row)])
 
     # 4. after you have calculated the TF-IDF representations for each line in the text, you need to
     # calculate the distances between each line to find which are the closest.
 
-    distances = {}
+    # Tests are checking printed values, not returned!
+    print(find_nearest_pair(tfidfs))
 
-    for i, line1 in enumerate(tfidfs):
-        for j, line2 in enumerate(tfidfs):
-            if i == j:
-                continue
-            else:
-                distances[(i, j)] = dist(line1, line2)
 
-    sorted_distances = [k for k, v in sorted(distances.items(), key=lambda item: item[1])]
+main(text)
 
-    return sorted_distances[0]
-
-print(main(text))
